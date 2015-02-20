@@ -17,6 +17,10 @@ extra-source-files:
   README.md
 cabal-version:       >=1.10
 
+Source-repository head
+  type:     git
+  location: git://github.com/feuerbach/lexer-applicative.git
+
 library
   exposed-modules:
     Language.Lexer.Applicative
