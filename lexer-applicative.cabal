@@ -4,7 +4,7 @@
 name:                lexer-applicative
 version:             1.0
 synopsis:            Simple lexer based on applicative regular expressions
--- description:         
+description:         Simple lexer based on applicative regular expressions
 homepage:            https://github.com/feuerbach/lexer-applicative
 license:             MIT
 license-file:        LICENSE
