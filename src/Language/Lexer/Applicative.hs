@@ -32,6 +32,10 @@ instance Exception LexicalError
 -- In case of a lexical error, throws the 'LexicalError' exception.
 -- This may seem impure compared to using 'Either', but it allows to
 -- consume the token list lazily.
+--
+-- Both token and whitespace regexes consume as many characters as possible
+-- (the maximal munch rule). When a regex returns without consuming any
+-- characters, a lexical error is signaled.
 tokens
   :: forall token.
      RE Char token -- ^ regular expression for tokens
