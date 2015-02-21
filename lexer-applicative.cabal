@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                lexer-applicative
-version:             1.0
+version:             1.0.0.1
 synopsis:            Simple lexer based on applicative regular expressions
 description:         Simple lexer based on applicative regular expressions
 homepage:            https://github.com/feuerbach/lexer-applicative
@@ -15,6 +15,7 @@ category:            Language
 build-type:          Simple
 extra-source-files:
   README.md
+  CHANGELOG.md
 cabal-version:       >=1.10
 
 Source-repository head
