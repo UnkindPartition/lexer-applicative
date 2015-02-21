@@ -49,3 +49,4 @@ test-suite test
     , regex-applicative
     , lexer-applicative
     , srcloc
+    , deepseq
