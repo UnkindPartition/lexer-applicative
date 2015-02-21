@@ -45,6 +45,10 @@ tokens pToken pJunk src = go . annotate src
     [] -> []
     s@((_, pos1, _):_) ->
       case findLongestPrefix re s of
+        -- If the longest match is empty, we have a lexical error
+        Just (v, (_, pos1', _):_) | pos1' == pos1 ->
+          throw $ LexicalError pos1
+
         Just (Just tok, rest) ->
           let
             pos2 =
