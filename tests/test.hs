@@ -21,10 +21,10 @@ main = defaultMain $ testGroup "Tests"
   [ testCase "Empty string" $
       tokens (empty :: RE Char Int) empty "-" "" @=? []
   , testCase "Space- and newline-separated numbers" $
-      unloc <$> tokens decimal whitespace "-" "1\n 23  456" @=?
-      [ (1,  Loc (Pos "-" 1 0 0) (Pos "-" 1 0 0))
-      , (23, Loc (Pos "-" 2 1 3) (Pos "-" 2 2 4))
-      , (456,Loc (Pos "-" 2 5 7) (Pos "-" 2 7 9))
+      unloc <$> tokens decimal whitespace "-" "1\n 23  456" @?=
+      [ (1,  Loc (Pos "-" 1 1 0) (Pos "-" 1 1 0))
+      , (23, Loc (Pos "-" 2 2 3) (Pos "-" 2 3 4))
+      , (456,Loc (Pos "-" 2 6 7) (Pos "-" 2 8 9))
       ]
   , testCase "Nullable parser, no error" $ do
       r <- try . evaluate $ tokens decimal badWhitespace "-" "31 45"
@@ -35,7 +35,7 @@ main = defaultMain $ testGroup "Tests"
       r <- try . evaluate . force $ tokens decimal badWhitespace "-" "31? 45"
       case r of
         Right (_ :: [L Int]) -> assertFailure "No error?"
-        Left (LexicalError p) -> p @?= Pos "-" 1 2 2
+        Left (LexicalError p) -> p @?= Pos "-" 1 3 2
   ]
 
 -- orphan

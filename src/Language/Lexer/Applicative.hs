@@ -68,10 +68,3 @@ tokens pToken pJunk src = go . annotate src
 
   re :: RE (Char, Pos, Pos) (Maybe token)
   re = comap (\(c, _, _) -> c) $ (Just <$> pToken) <|> (Nothing <$ pJunk)
-
--- | Format a position
-displayPos :: Pos -> String
-displayPos (Pos src line col _) =
-    src ++ (colon . shows line . colon . shows (col+1)) ""
-  where
-    colon = (':' :)
