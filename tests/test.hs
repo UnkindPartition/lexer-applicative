@@ -18,24 +18,34 @@ unloc (L l a) = (a, l)
 badWhitespace = () <$ many (psym isSpace)
 
 main = defaultMain $ testGroup "Tests"
-  [ testCase "Empty string" $
-      tokens (empty :: RE Char Int) empty "-" "" @=? []
-  , testCase "Space- and newline-separated numbers" $
-      unloc <$> tokens decimal whitespace "-" "1\n 23  456" @?=
-      [ (1,  Loc (Pos "-" 1 1 0) (Pos "-" 1 1 0))
-      , (23, Loc (Pos "-" 2 2 3) (Pos "-" 2 3 4))
-      , (456,Loc (Pos "-" 2 6 7) (Pos "-" 2 8 9))
-      ]
-  , testCase "Nullable parser, no error" $ do
-      r <- try . evaluate $ tokens decimal badWhitespace "-" "31 45"
-      case r of
-        Right (_ :: [L Int]) -> return ()
-        Left (e :: SomeException) -> assertFailure $ show e
-  , testCase "Nullable parser, error" $ do
-      r <- try . evaluate . force $ tokens decimal badWhitespace "-" "31? 45"
-      case r of
-        Right (_ :: [L Int]) -> assertFailure "No error?"
-        Left (LexicalError p) -> p @?= Pos "-" 1 3 2
+  [ testGroup "tokens"
+    [ testCase "Empty string" $
+        tokens (empty :: RE Char Int) empty "-" "" @=? []
+    , testCase "Space- and newline-separated numbers" $
+        unloc <$> tokens decimal whitespace "-" "1\n 23  456" @?=
+        [ (1,  Loc (Pos "-" 1 1 0) (Pos "-" 1 1 0))
+        , (23, Loc (Pos "-" 2 2 3) (Pos "-" 2 3 4))
+        , (456,Loc (Pos "-" 2 6 7) (Pos "-" 2 8 9))
+        ]
+    , testCase "Nullable parser, no error" $ do
+        r <- try . evaluate $ tokens decimal badWhitespace "-" "31 45"
+        case r of
+          Right (_ :: [L Int]) -> return ()
+          Left (e :: SomeException) -> assertFailure $ show e
+    , testCase "Nullable parser, error" $ do
+        r <- try . evaluate . force $ tokens decimal badWhitespace "-" "31? 45"
+        case r of
+          Right (_ :: [L Int]) -> assertFailure "No error?"
+          Left (LexicalError p) -> p @?= Pos "-" 1 3 2
+    ]
+    -- end testGroup "tokens"
+
+  , testGroup "tokensEither"
+    [ testCase "Returns Right upon success" $ do
+        tokensEither decimal empty "-" "1" @=? Right [L (Loc (Pos "-" 1 1 0) (Pos "" 1 1 0)) 1]
+    , testCase "Returns Left upon failure" $ do
+        tokensEither decimal empty "-" "a" @=? Left (LexicalError (Pos "-" 1 1 0))
+    ]
   ]
 
 -- orphan
