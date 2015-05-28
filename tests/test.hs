@@ -36,6 +36,9 @@ main = defaultMain $ testGroup "Tests"
       case r of
         Right (_ :: [L Int]) -> assertFailure "No error?"
         Left (LexicalError p) -> p @?= Pos "-" 1 3 2
+  , testCase "tokensEither catches exceptions" $ do
+      tokensEither decimal empty "-" "1" @=? Right [L (Loc (Pos "-" 1 1 0) (Pos "" 1 1 0)) 1]
+      tokensEither decimal empty "-" "a" @=? Left (LexicalError (Pos "-" 1 1 0))
   ]
 
 -- orphan
