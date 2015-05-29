@@ -1,13 +1,16 @@
 {-# LANGUAGE ScopedTypeVariables, DeriveDataTypeable #-}
+
 -- | For an example, see
 -- <https://ro-che.info/articles/2015-01-02-lexical-analysis>
-module Language.Lexer.Applicative (tokens, LexicalError(..)) where
+module Language.Lexer.Applicative (tokens, tokensEither, LexicalError(..)) where
 
-import Text.Regex.Applicative
+import Control.Exception
 import Data.Loc
 import Data.List
+import Data.Maybe
 import Data.Typeable (Typeable)
-import Control.Exception
+import System.IO.Unsafe (unsafePerformIO)
+import Text.Regex.Applicative
 
 annotate
   :: String -- ^ source file name
@@ -21,10 +24,11 @@ annotate src s = snd $ mapAccumL f (startPos src, startPos src) s
 
 -- | The lexical error exception
 data LexicalError = LexicalError !Pos
-  deriving Typeable
+  deriving (Eq, Typeable)
 
 instance Show LexicalError where
   show (LexicalError pos) = "Lexical error at " ++ displayPos pos
+
 instance Exception LexicalError
 
 -- | The lexer.
@@ -39,12 +43,13 @@ instance Exception LexicalError
 tokens
   :: forall token.
      RE Char token -- ^ regular expression for tokens
-  -> RE Char () -- ^ regular expression for whitespace and comments
-  -> String -- ^ source file name (used in locations)
-  -> String -- ^ source text
+  -> RE Char ()    -- ^ regular expression for whitespace and comments
+  -> String        -- ^ source file name (used in locations)
+  -> String        -- ^ source text
   -> [L token]
 tokens pToken pJunk src = go . annotate src
   where
+  go :: [(Char, Pos, Pos)] -> [L token]
   go l = case l of
     [] -> []
     s@((_, pos1, _):_) ->
@@ -68,3 +73,25 @@ tokens pToken pJunk src = go . annotate src
 
   re :: RE (Char, Pos, Pos) (Maybe token)
   re = comap (\(c, _, _) -> c) $ (Just <$> pToken) <|> (Nothing <$ pJunk)
+
+-- | Like `tokens`, but pure, and strict in the spine of the list.
+tokensEither
+  :: forall token.
+     RE Char token -- ^ regular expression for tokens
+  -> RE Char ()    -- ^ regular expression for whitespace and comments
+  -> String        -- ^ source file name (used in locations)
+  -> String        -- ^ source text
+  -> Either LexicalError [L token]
+tokensEither pToken pJunk src =
+  unsafePerformIO
+  . try
+  . evaluate
+  . forceSpine
+  . tokens pToken pJunk src
+  where
+    forceSpine :: [a] -> [a]
+    forceSpine xs = foldr (const id) () xs `seq` xs
+
+    lmap :: (a -> b) -> Either a c -> Either b c
+    lmap f (Left a)  = Left (f a)
+    lmap _ (Right b) = Right b
