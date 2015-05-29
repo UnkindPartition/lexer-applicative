@@ -56,6 +56,9 @@ main = defaultMain $ testGroup "Tests"
   , testCase "No matches after a recognized token" $ do
       fmap unloc (runLexer (longestToken decimal <> ws) "-" "2 x") @?=
         TsToken (2 :: Int, Loc (Pos "-" 1 1 0) (Pos "-" 1 1 0)) (TsError $ LexicalError (Pos "-" 1 3 2))
+  , testCase "streamToList throws an exception upon failure" $ do
+      r :: Either LexicalError [L ()] <- try . evaluate . force $ tokens mempty "-" " "
+      r @?= Left (LexicalError (Pos "-" 1 1 0))
   , testCase "longestShortest (success)" $
       fmap (map unLoc)
       (tokensEither ((Left <$> blockComment) <> (Right <$> word) <> ws)
@@ -63,6 +66,23 @@ main = defaultMain $ testGroup "Tests"
         "/* xxx */ yyy /*** abc ***/ ef")
       @?=
         Right [Left ("/*"," xxx */"),Right "yyy",Left ("/***"," abc ***/"),Right "ef"]
+  , testCase "longestShortest (failure of shortest; end of stream)" $
+      (tokensEither (whitespace $ longestShortest (\_ _ -> ()) (string "abc") (const empty))
+        "-"
+        "abc" :: Either LexicalError [L ()])
+      @?=
+        Left (LexicalError (Pos "-" 1 3 2))
+  , testCase "longestShortest (failure of shortest; not end of stream)" $
+      (tokensEither (whitespace $ longestShortest (\_ _ -> ()) (string "abc") (const empty))
+        "-"
+        "abc " :: Either LexicalError [L ()])
+      @?=
+        Left (LexicalError (Pos "-" 1 3 2))
+  , testCase "instance IsList TokenStream" $ do
+      let r :: TokenStream Int
+          r = fmap unLoc $ runLexer (longestToken decimal <> ws) "-" "1 2 3"
+      [1,2,3] <- return r -- testing pattern match, i.e. toList
+      r @?= [1,2,3] -- testing fromList
   ]
 
 -- orphan
