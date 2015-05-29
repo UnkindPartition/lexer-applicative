@@ -51,6 +51,7 @@ data Lexer tok = Lexer
   { lexerTokenRE :: Recognizer tok
   , lexerWhitespaceRE :: Recognizer ()
   }
+  deriving Functor
 
 instance Monoid (Lexer tok) where
   mempty = Lexer mempty mempty
