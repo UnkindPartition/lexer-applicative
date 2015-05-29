@@ -215,7 +215,7 @@ data TokenStream tok
   = TsToken tok (TokenStream tok)
   | TsEof
   | TsError LexicalError
-  deriving (Functor, Show)
+  deriving (Eq, Functor, Show)
 
 instance IsList (TokenStream tok) where
   type Item (TokenStream tok) = tok
