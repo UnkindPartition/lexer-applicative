@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, DeriveDataTypeable, DeriveFunctor, TypeFamilies, CPP #-}
+{-# LANGUAGE ScopedTypeVariables, DeriveDataTypeable, DeriveFunctor #-}
 -- | For some background, see
 -- <https://ro-che.info/articles/2015-01-02-lexical-analysis>
 module Language.Lexer.Applicative
@@ -27,10 +27,6 @@ import Data.Typeable (Typeable)
 import Data.Monoid
 import Data.Function
 import Control.Exception
-
-#if MIN_VERSION_base(4,7,0)
-import GHC.Exts (IsList(..))
-#endif
 
 ----------------------------------------------------------------------
 --                             Lexer
@@ -199,13 +195,6 @@ data TokenStream tok
   | TsEof
   | TsError LexicalError
   deriving (Eq, Functor, Show)
-
-#if MIN_VERSION_base(4,7,0)
-instance IsList (TokenStream tok) where
-  type Item (TokenStream tok) = tok
-  toList = streamToList
-  fromList = foldr TsToken TsEof
-#endif
 
 -- | Convert a 'TokenStream' to a list of tokens. Turn 'TsError' into
 -- a runtime 'LexicalError' exception.

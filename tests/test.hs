@@ -1,8 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, CPP #-}
-
-#if MIN_VERSION_base(4,7,0)
-{-# LANGUAGE OverloadedLists #-}
-#endif
+{-# LANGUAGE ScopedTypeVariables #-}
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -82,13 +78,6 @@ main = defaultMain $ testGroup "Tests"
         "abc " :: Either LexicalError [L ()])
       @?=
         Left (LexicalError (Pos "-" 1 3 2))
-#if MIN_VERSION_base(4,7,0)
-  , testCase "instance IsList TokenStream" $ do
-      let r :: TokenStream Int
-          r = fmap unLoc $ runLexer (longestToken decimal <> ws) "-" "1 2 3"
-      [1,2,3] <- return r -- testing pattern match, i.e. toList
-      r @?= [1,2,3] -- testing fromList
-#endif
   ]
 
 -- orphan
