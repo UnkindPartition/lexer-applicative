@@ -7,13 +7,15 @@ import Text.Regex.Applicative
 import Text.Regex.Applicative.Common
 import Data.Char
 import Data.Monoid
-import Data.Loc (L(..), Loc(..), Pos(..))
+import Data.Loc
 import Control.Exception
 import Control.DeepSeq
 
 ws = whitespace $ longest $ some (psym isSpace)
 -- this is bad, because it accepts an empty string
 badWhitespace = whitespace $ longest $ many (psym isSpace)
+
+word = longestToken $ many $ psym isAlpha
 
 longestToken = token . longest
 
@@ -22,6 +24,13 @@ tokensEither l n s = streamToEitherList $ runLexer l n s
 
 unloc (L l a) = (a, l)
 
+-- This recognizes C-style block comments like /* ... */,
+-- but also matching delimiters like /*** ... ***/ (to make it more fun)
+blockComment = token $
+  longestShortest
+    (,)
+    ((++) <$> string "/" <*> many (sym '*'))
+    (\start -> (++) <$> many anySym <*> string (reverse start))
 
 main = defaultMain $ testGroup "Tests"
   [ testCase "Empty string" $
@@ -42,6 +51,18 @@ main = defaultMain $ testGroup "Tests"
       case r of
         Right (_ :: [L Int]) -> assertFailure "No error?"
         Left (LexicalError p) -> p @?= Pos "-" 1 3 2
+  , testCase "No matches, error" $ do
+      tokensEither (longestToken decimal) "-" " " @?= Left (LexicalError (Pos "-" 1 1 0))
+  , testCase "No matches after a recognized token" $ do
+      fmap unloc (runLexer (longestToken decimal <> ws) "-" "2 x") @?=
+        TsToken (2 :: Int, Loc (Pos "-" 1 1 0) (Pos "-" 1 1 0)) (TsError $ LexicalError (Pos "-" 1 3 2))
+  , testCase "longestShortest (success)" $
+      fmap (map unLoc)
+      (tokensEither ((Left <$> blockComment) <> (Right <$> word) <> ws)
+        "-"
+        "/* xxx */ yyy /*** abc ***/ ef")
+      @?=
+        Right [Left ("/*"," xxx */"),Right "yyy",Left ("/***"," abc ***/"),Right "ef"]
   ]
 
 -- orphan
