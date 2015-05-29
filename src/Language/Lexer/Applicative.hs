@@ -257,6 +257,12 @@ runLexer (Lexer (Recognizer pToken) (Recognizer pJunk)) src = go . annotate src
   go l = case l of
     [] -> TsEof
     s@((_, pos1, _):_) ->
+      let
+        -- last position in the stream
+        -- in this branch s is non-empty, so this is safe
+        last_pos :: Pos
+        last_pos = case last s of (_, p, _) -> p
+      in
       case findLongestPrefix re s of
 
         Nothing -> TsError (LexicalError pos1)
@@ -264,8 +270,13 @@ runLexer (Lexer (Recognizer pToken) (Recognizer pJunk)) src = go . annotate src
         Just (shortest_re, rest1) ->
 
           case findShortestPrefix shortest_re rest1 of
+            Nothing -> TsError . LexicalError $
+              case rest1 of
+                (_, _, p):_ -> p
+                [] -> last_pos
+
             -- If the combined match is empty, we have a lexical error
-            Just (v, (_, pos1', _):_) | pos1' == pos1 ->
+            Just (_, (_, pos1', _):_) | pos1' == pos1 ->
               TsError $ LexicalError pos1
 
             Just (Just tok, rest) ->
@@ -273,7 +284,7 @@ runLexer (Lexer (Recognizer pToken) (Recognizer pJunk)) src = go . annotate src
                 pos2 =
                   case rest of
                     (_, _, p):_ -> p
-                    [] -> case last s of (_, p, _) -> p
+                    [] -> last_pos
 
               in TsToken (L (Loc pos1 pos2) tok) (go rest)
 
