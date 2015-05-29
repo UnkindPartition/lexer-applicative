@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, OverloadedLists #-}
 import Test.Tasty
 import Test.Tasty.HUnit
 
@@ -16,6 +16,9 @@ ws = whitespace $ longest $ some (psym isSpace)
 badWhitespace = whitespace $ longest $ many (psym isSpace)
 
 longestToken = token . longest
+
+tokens l n s = streamToList $ runLexer l n s
+tokensEither l n s = streamToEitherList $ runLexer l n s
 
 unloc (L l a) = (a, l)
 

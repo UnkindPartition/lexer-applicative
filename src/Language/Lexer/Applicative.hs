@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, DeriveDataTypeable, DeriveFunctor #-}
+{-# LANGUAGE ScopedTypeVariables, DeriveDataTypeable, DeriveFunctor, TypeFamilies #-}
 -- | For some background, see
 -- <https://ro-che.info/articles/2015-01-02-lexical-analysis>
 module Language.Lexer.Applicative
@@ -12,8 +12,11 @@ module Language.Lexer.Applicative
   , longest
   , longestShortest
     -- * Running a Lexer
-  , tokens
-  , tokensEither
+  , runLexer
+    -- ** Working with a token stream
+  , TokenStream(..)
+  , streamToList
+  , streamToEitherList
   , LexicalError(..)
   ) where
 
@@ -22,8 +25,9 @@ import Data.Loc
 import Data.List
 import Data.Typeable (Typeable)
 import Data.Monoid
+import Data.Function
 import Control.Exception
-import System.IO.Unsafe (unsafePerformIO)
+import GHC.Exts
 
 ----------------------------------------------------------------------
 --                             Lexer
@@ -194,7 +198,7 @@ longestShortest f prefRE suffRE =
     (\pref -> f pref <$> suffRE pref) <$> prefRE
 
 ----------------------------------------------------------------------
---                           LexicalError
+--                           Running a Lexer
 ----------------------------------------------------------------------
 
 -- | The lexical error exception
@@ -205,36 +209,63 @@ instance Show LexicalError where
   show (LexicalError pos) = "Lexical error at " ++ displayPos pos
 instance Exception LexicalError
 
-----------------------------------------------------------------------
---                           Running a Lexer
-----------------------------------------------------------------------
+-- | A stream of tokens
+data TokenStream tok
+  = TsToken tok (TokenStream tok)
+  | TsEof
+  | TsError LexicalError
+  deriving (Functor, Show)
 
--- | The lexer.
---
--- In case of a lexical error, throws the 'LexicalError' exception.
--- This may seem impure compared to using 'Either', but it allows to
--- consume the token list lazily.
-tokens
+instance IsList (TokenStream tok) where
+  type Item (TokenStream tok) = tok
+  toList = streamToList
+  fromList = foldr TsToken TsEof
+
+-- | Convert a 'TokenStream' to a list of tokens. Turn 'TsError' into
+-- a runtime 'LexicalError' exception.
+streamToList :: TokenStream tok -> [tok]
+streamToList stream =
+  case stream of
+    TsToken t stream' -> t : streamToList stream'
+    TsEof -> []
+    TsError e -> throw e
+
+-- | Convert a 'TokenStream' into either a token list or a 'LexicalError'.
+-- This function may be occasionally useful, but in general its use is
+-- discouraged because it needs to force the whole stream before returning
+-- a result.
+streamToEitherList :: TokenStream tok -> Either LexicalError [tok]
+streamToEitherList =
+  sequence .
+  fix (\rec stream ->
+    case stream of
+      TsToken t stream' -> Right t : rec stream'
+      TsEof -> []
+      TsError e -> [Left e]
+  )
+
+-- | Run a lexer on a string and produce a lazy stream of tokens
+runLexer
   :: forall tok.
      Lexer tok -- ^ lexer specification
   -> String -- ^ source file name (used in locations)
   -> String -- ^ source text
-  -> [L tok]
-tokens (Lexer (Recognizer pToken) (Recognizer pJunk)) src = go . annotate src
+  -> TokenStream (L tok)
+runLexer (Lexer (Recognizer pToken) (Recognizer pJunk)) src = go . annotate src
   where
   go l = case l of
-    [] -> []
+    [] -> TsEof
     s@((_, pos1, _):_) ->
       case findLongestPrefix re s of
 
-        Nothing -> throw $ LexicalError pos1
+        Nothing -> TsError (LexicalError pos1)
 
         Just (shortest_re, rest1) ->
 
           case findShortestPrefix shortest_re rest1 of
             -- If the combined match is empty, we have a lexical error
             Just (v, (_, pos1', _):_) | pos1' == pos1 ->
-              throw $ LexicalError pos1
+              TsError $ LexicalError pos1
 
             Just (Just tok, rest) ->
               let
@@ -243,7 +274,7 @@ tokens (Lexer (Recognizer pToken) (Recognizer pJunk)) src = go . annotate src
                     (_, _, p):_ -> p
                     [] -> case last s of (_, p, _) -> p
 
-              in L (Loc pos1 pos2) tok : go rest
+              in TsToken (L (Loc pos1 pos2) tok) (go rest)
 
             Just (Nothing, rest) -> go rest
 
@@ -253,28 +284,6 @@ tokens (Lexer (Recognizer pToken) (Recognizer pJunk)) src = go . annotate src
   re :: RE (Char, Pos, Pos) (RE (Char, Pos, Pos) (Maybe tok))
   re = extend . fmap extend $
     ((Just <$>) <$> pToken) <|> ((Nothing <$) <$> pJunk)
-
--- | Like `tokens`, but returns 'Left' instead of throwing an exception.
---
--- This function may be useful occasionally, but most of the time you
--- should be using 'tokens' instead. If you want to catch 'LexicalError',
--- catch it /after/ you plug 'tokens' into a parser, not /before/, like this
--- function does.
-tokensEither
-  :: Lexer tok
-  -> String        -- ^ source file name (used in locations)
-  -> String        -- ^ source text
-  -> Either LexicalError [L tok]
-tokensEither lexer src =
-  unsafePerformIO
-  . try
-  . evaluate
-  . forceSpine
-  . tokens lexer src
-  where
-    forceSpine :: [a] -> [a]
-    forceSpine xs = foldr (const id) xs xs
-{-# NOINLINE tokensEither #-}
 
 annotate
   :: String -- ^ source file name
