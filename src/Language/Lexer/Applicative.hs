@@ -70,7 +70,12 @@ tokens pToken pJunk src = go . annotate src
   re :: RE (Char, Pos, Pos) (Maybe token)
   re = comap (\(c, _, _) -> c) $ (Just <$> pToken) <|> (Nothing <$ pJunk)
 
--- | Like `tokens`, but pure, and strict in the spine of the list.
+-- | Like `tokens`, but returns 'Left' instead of throwing an exception.
+--
+-- This function may be useful occasionally, but most of the time you
+-- should be using 'tokens' instead. If you want to catch 'LexicalError',
+-- catch it /after/ you plug 'tokens' into a parser, not /before/, like this
+-- function does.
 tokensEither
   :: forall token.
      RE Char token -- ^ regular expression for tokens
