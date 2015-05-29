@@ -33,9 +33,8 @@ unloc (L l a) = (a, l)
 -- but also matching delimiters like /*** ... ***/ (to make it more fun)
 blockComment = token $
   longestShortest
-    (,)
     ((++) <$> string "/" <*> many (sym '*'))
-    (\start -> (++) <$> many anySym <*> string (reverse start))
+    (\start -> (,) start <$> ((++) <$> many anySym <*> string (reverse start)))
 
 main = defaultMain $ testGroup "Tests"
   [ testCase "Empty string" $
@@ -72,13 +71,13 @@ main = defaultMain $ testGroup "Tests"
       @?=
         Right [Left ("/*"," xxx */"),Right "yyy",Left ("/***"," abc ***/"),Right "ef"]
   , testCase "longestShortest (failure of shortest; end of stream)" $
-      (tokensEither (whitespace $ longestShortest (\_ _ -> ()) (string "abc") (const empty))
+      (tokensEither (whitespace $ longestShortest (string "abc") (const empty))
         "-"
         "abc" :: Either LexicalError [L ()])
       @?=
         Left (LexicalError (Pos "-" 1 3 2))
   , testCase "longestShortest (failure of shortest; not end of stream)" $
-      (tokensEither (whitespace $ longestShortest (\_ _ -> ()) (string "abc") (const empty))
+      (tokensEither (whitespace $ longestShortest (string "abc") (const empty))
         "-"
         "abc " :: Either LexicalError [L ()])
       @?=

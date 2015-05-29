@@ -47,7 +47,7 @@ import GHC.Exts (IsList(..))
 --  myLexer = 'mconcat'
 --    [ 'token'      ('longest' myToken)
 --    , 'whitespace' ('longest' myWhiteSpace)
---    , 'whitespace' ('longestShortest' myComment)
+--    , 'whitespace' ('longestShortest' myCommentPrefix myCommentSuffix)
 --    ]
 -- @
 data Lexer tok = Lexer
@@ -105,11 +105,11 @@ instance Monoid (Recognizer tok) where
 --
 -- * @'longest' (r1 '<|>' r2) = 'longest' r1 '<>' 'longest' r2@
 --
--- * @'longest' r = 'longestShortest' 'const' r ('const' '$' 'pure' ())@
+-- * @'longest' r = 'longestShortest' r 'pure'@
 longest
   :: RE Char tok
   -> Recognizer tok
-longest re = longestShortest const re (const $ pure ())
+longest re = longestShortest re pure
 
 -- | This is a more sophisticated recognizer than 'longest'.
 --
@@ -134,7 +134,6 @@ longest re = longestShortest const re (const $ pure ())
 --
 -- @
 -- 'longestShortest'
---    (\\_ _ -> ()) -- don't care about the comment text
 --    ('string' "\/*")
 --    (\\_ -> 'many' 'anySym' '*>' 'string' "*\/")
 -- @
@@ -154,52 +153,33 @@ longest re = longestShortest const re (const $ pure ())
 -- must match or else a 'LexicalError' is thrown. Therefore,
 --
 -- @
--- 'longestShortest' f pref suff1
+-- 'longestShortest' pref suff1
 --          '<>'
--- 'longestShortest' f pref suff2
+-- 'longestShortest' pref suff2
 --          =
--- 'longestShortest' f pref suff1
+-- 'longestShortest' pref suff1
 -- @
 --
 -- and is not the same as
 --
--- @'longestShortest' f pref (suff1 '<|>' suff2)@
+-- @'longestShortest' pref (suff1 '<|>' suff2)@
 --
 -- The following holds, however:
 --
 -- @
--- 'longestShortest' f pref1 suff
+-- 'longestShortest' pref1 suff
 --          '<>'
--- 'longestShortest' f pref2 suff
+-- 'longestShortest' pref2 suff
 --          =
--- 'longestShortest' f (pref1 '<|>' pref2) suff
+-- 'longestShortest' (pref1 '<|>' pref2) suff
 -- @
---
--- \* * *
---
--- Passing the result of prefix into both suffix and combining function may
--- seem superfluous; indeed we could get away with
---
--- @'RE' 'Char' pref -> (pref -> 'RE' 'Char' tok) -> 'Recognizer' tok@
---
--- or even
---
--- @'RE' 'Char' ('RE' 'Char' tok) -> 'Recognizer' tok@
---
--- This is done purely for convenience and readability; the intention is
--- that @pref@ passed into suffix is used to customize the regular
--- expression which would still return only its part of the token, and then
--- the function will combine the two parts. Of course, you don't need to
--- follow this recommendation. Thanks to parametricity, all three versions
--- are equivalent.
 longestShortest
-  :: (pref -> suff -> tok)
-  -> RE Char pref -- ^ regex for the longest prefix
-  -> (pref -> RE Char suff) -- ^ regex for the shortest suffix
+  :: RE Char pref -- ^ regex for the longest prefix
+  -> (pref -> RE Char tok) -- ^ regex for the shortest suffix
   -> Recognizer tok
-longestShortest f prefRE suffRE =
+longestShortest prefRE suffRE =
   Recognizer $
-    (\pref -> f pref <$> suffRE pref) <$> prefRE
+    suffRE <$> prefRE
 
 ----------------------------------------------------------------------
 --                           Running a Lexer
