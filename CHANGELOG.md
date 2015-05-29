@@ -1,6 +1,12 @@
 Changelog
 =========
 
+2.1
+---
+
+* Restore compatibility with older GHCs
+* Change the type of `longestShortest`
+
 2.0
 ---
 
