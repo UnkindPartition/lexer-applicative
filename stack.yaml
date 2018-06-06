@@ -1,0 +1,4 @@
+extra-deps: []
+resolver: lts-10.6
+packages:
+- '.'
