@@ -24,7 +24,7 @@ import Text.Regex.Applicative
 import Data.Loc
 import Data.List
 import Data.Typeable (Typeable)
-import Data.Monoid
+import Data.Semigroup (Semigroup(..))
 import Data.Function
 import Control.Exception
 
@@ -52,9 +52,12 @@ data Lexer tok = Lexer
   }
   deriving Functor
 
+instance Semigroup (Lexer tok) where
+  Lexer t1 w1 <> Lexer t2 w2 = Lexer (t1 <> t2) (w1 <> w2)
+
 instance Monoid (Lexer tok) where
   mempty = Lexer mempty mempty
-  Lexer t1 w1 `mappend` Lexer t2 w2 = Lexer (t1 <> t2) (w1 <> w2)
+  mappend = (<>)
 
 -- | Build a lexer with the given token recognizer and no (i.e. 'mempty')
 -- whitespace recognizer.
@@ -89,9 +92,12 @@ whitespace r = Lexer mempty (() <$ r)
 newtype Recognizer tok = Recognizer (RE Char (RE Char tok))
   deriving Functor
 
+instance Semigroup (Recognizer tok) where
+  Recognizer r1 <> Recognizer r2 = Recognizer (r1 <|> r2)
+
 instance Monoid (Recognizer tok) where
   mempty = Recognizer empty
-  mappend (Recognizer r1) (Recognizer r2) = Recognizer (r1 <|> r2)
+  mappend = (<>)
 
 -- | When scanning a next token, the regular expression will compete with
 -- the other 'Recognizer's of its 'Lexer'. If it wins, its result
