@@ -1,6 +1,16 @@
 Changelog
 =========
 
+2.1.0.2
+-------
+
+Fix compatibility with GHC 8.4 and drop support for GHC 7.x
+
+2.1.0.1
+-------
+
+Fix a link in the README
+
 2.1
 ---
 
