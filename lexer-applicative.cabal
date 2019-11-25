@@ -25,6 +25,7 @@ Source-repository head
 library
   exposed-modules:
     Language.Lexer.Applicative
+    Language.Lexer.Applicative.Text
   -- other-modules:
   -- other-extensions:
   build-depends:
